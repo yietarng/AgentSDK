@@ -2,6 +2,7 @@ from __future__ import annotations
 import json
 from typing import Any
 from database import get_connection
+from config import settings
 
 TResponseInputItem = dict[str, Any]
 
@@ -21,29 +22,25 @@ class MySQLSession:
         self.session_id = session_id
         self.user_id = user_id
 
-    async def get_items(self, limit: int | None = None) -> list[TResponseInputItem]:
-        """Return stored items for this session in insertion order."""
-        if limit is not None:
-            # Fetch the last `limit` rows while preserving ascending order
-            sql = """
-                SELECT content FROM (
-                    SELECT id, content
-                    FROM conversations
-                    WHERE session_id = %s
-                    ORDER BY id DESC
-                    LIMIT %s
-                ) sub
-                ORDER BY id ASC
-            """
-            params = (self.session_id, int(limit))
-        else:
-            sql = """
-                SELECT content
+    async def get_items(self) -> list[TResponseInputItem]:
+        """Return the most recent MAX_HISTORY_ITEMS stored items in insertion order.
+
+        The SDK calls this with no arguments; the sliding-window limit is read
+        from settings so it is always enforced without relying on the caller.
+        """
+        # Fetch the last N rows (descending), then re-order ascending so the
+        # SDK sees history in chronological order.
+        sql = """
+            SELECT content FROM (
+                SELECT id, content
                 FROM conversations
                 WHERE session_id = %s
-                ORDER BY id ASC
-            """
-            params = (self.session_id,)
+                ORDER BY id DESC
+                LIMIT %s
+            ) sub
+            ORDER BY id ASC
+        """
+        params = (self.session_id, settings.max_history_items)
 
         with get_connection() as conn:
             cursor = conn.cursor(dictionary=True)

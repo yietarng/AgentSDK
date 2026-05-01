@@ -6,6 +6,9 @@ from agent.context import AppContext
 from config import settings
 from tools.verifier import verify_tool_output
 
+# Module-level singleton — avoids creating a new client on every tool call.
+_tavily_client = AsyncTavilyClient(api_key=settings.tavily_api_key)
+
 
 @function_tool
 async def web_search(
@@ -24,8 +27,7 @@ async def web_search(
     If the result starts with [NO RESULTS] or [LOW QUALITY RESULT], rephrase
     the query and try again.
     """
-    client = AsyncTavilyClient(api_key=settings.tavily_api_key)
-    response = await client.search(
+    response = await _tavily_client.search(
         query=query,
         max_results=max_results,
         search_depth="basic",

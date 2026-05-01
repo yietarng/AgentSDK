@@ -42,7 +42,7 @@ def verify_tool_output(raw: str, query: str = "") -> VerifiedOutput:
             "Try rephrasing your search or use a different tool.",
         )
 
-    if stripped.lower().startswith(_ERROR_PREFIXES) or len(stripped) < 50:
+    if stripped.lower().startswith(_ERROR_PREFIXES):
         return VerifiedOutput(
             OutputQuality.EMPTY,
             f"[LOW QUALITY RESULT] {stripped}\n"

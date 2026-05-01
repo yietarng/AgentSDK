@@ -59,3 +59,9 @@ def build_memory_section(memories: list) -> str:
     for fact in memories:
         lines.append(f"  - {fact.memory_key}: {fact.memory_value}")
     return "\n".join(lines)
+
+
+def render_prompt(memories: list) -> str:
+    # Use str.replace instead of .format() so curly braces in memory values
+    # don't trigger a KeyError.
+    return REACT_SYSTEM_PROMPT.replace("{memory_section}", build_memory_section(memories))

@@ -1,4 +1,3 @@
-import mysql.connector
 from mysql.connector import pooling
 from contextlib import contextmanager
 from config import settings

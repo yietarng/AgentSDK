@@ -1,10 +1,8 @@
 from __future__ import annotations
-import asyncio
 from agents import Agent, Runner, RunConfig
-from agents.exceptions import MaxTurnsExceeded
 from agents import RunContextWrapper
 from agent.context import AppContext
-from agent.prompts import REACT_SYSTEM_PROMPT, build_memory_section
+from agent.prompts import render_prompt
 from memory.long_term import recall_memories
 from memory.short_term import MySQLSession
 from tools import web_search, search_knowledge_base, save_user_memory, recall_user_memory
@@ -16,8 +14,7 @@ def _build_instructions(
     agent: "Agent[AppContext]",
 ) -> str:
     """Dynamic instructions callable — injects the user's long-term memories each run."""
-    memory_section = build_memory_section(wrapper.context.memories)
-    return REACT_SYSTEM_PROMPT.format(memory_section=memory_section)
+    return render_prompt(wrapper.context.memories)
 
 
 support_agent = Agent[AppContext](
@@ -32,9 +29,9 @@ support_agent = Agent[AppContext](
     ],
 )
 
+# max_turns belongs on Runner.run(), not RunConfig — passing it here causes TypeError
 _run_config = RunConfig(
     workflow_name="CustomerSupport",
-    max_turns=settings.agent_max_turns,
     tracing_disabled=False,
 )
 
@@ -69,6 +66,7 @@ async def run_turn(
         context=context,
         session=session,
         run_config=_run_config,
+        max_turns=settings.agent_max_turns,
     )
 
     return str(result.final_output)
