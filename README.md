@@ -224,20 +224,79 @@ main.py
 
 ## Installation
 
-### 1. Clone the repository
+### 1. Install MySQL
+
+MySQL must be installed and running **before** starting the agent. Choose the
+option that fits your environment.
+
+**Option A — Docker (fastest, no system install)**
+```bash
+docker run -d \
+  --name support-mysql \
+  -e MYSQL_ROOT_PASSWORD=rootpassword \
+  -e MYSQL_DATABASE=support_db \
+  -e MYSQL_USER=support_user \
+  -e MYSQL_PASSWORD=your_password \
+  -p 3306:3306 \
+  mysql:8.0
+```
+Use `support_user` / `your_password` in your `.env`. Skip the manual database
+creation step below — Docker creates it automatically.
+
+**Option B — macOS**
+```bash
+brew install mysql
+brew services start mysql
+mysql_secure_installation   # follow prompts to set root password
+```
+
+**Option C — Ubuntu / Debian**
+```bash
+sudo apt update && sudo apt install mysql-server -y
+sudo systemctl start mysql
+sudo mysql_secure_installation
+```
+
+**Option D — Windows**
+
+Download and run the MySQL Installer from https://dev.mysql.com/downloads/installer,
+choose **Server only**, and follow the setup wizard.
+
+#### Create a database user (skip if using Docker)
+
+```bash
+mysql -u root -p -e "
+  CREATE DATABASE IF NOT EXISTS support_db;
+  CREATE USER IF NOT EXISTS 'support_user'@'localhost' IDENTIFIED BY 'your_password';
+  GRANT ALL PRIVILEGES ON support_db.* TO 'support_user'@'localhost';
+  FLUSH PRIVILEGES;
+"
+```
+
+#### Verify the connection
+
+```bash
+mysql -u support_user -p support_db -e "SELECT 1;"
+```
+
+A result of `1` confirms MySQL is reachable with your credentials.
+
+---
+
+### 2. Clone the repository
 
 ```bash
 git clone <repository-url>
 cd AgentSDK
 ```
 
-### 2. Install Python dependencies
+### 3. Install Python dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure environment variables
+### 4. Configure environment variables
 
 ```bash
 cp .env.example .env
@@ -253,16 +312,15 @@ TAVILY_API_KEY=tvly-...
 
 MYSQL_HOST=localhost
 MYSQL_PORT=3306
-MYSQL_USER=your_db_user
-MYSQL_PASSWORD=your_db_password
+MYSQL_USER=support_user
+MYSQL_PASSWORD=your_password
 MYSQL_DATABASE=support_db
 ```
 
-### 4. Create the database and run the schema
+### 5. Run the database schema
 
 ```bash
-mysql -u your_db_user -p -e "CREATE DATABASE IF NOT EXISTS support_db;"
-mysql -u your_db_user -p support_db < database/schema.sql
+mysql -u support_user -p support_db < database/schema.sql
 ```
 
 This creates three tables (`knowledge_base`, `user_memory`, `conversations`) and
