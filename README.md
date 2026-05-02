@@ -16,6 +16,184 @@ A customer support agent built with the **OpenAI Agents SDK** that reasons and a
 
 ---
 
+## Use Case
+
+This agent is designed for **businesses that want to automate first-line customer support**. It handles routine queries around the clock — freeing human agents for complex escalations — while delivering a personalised experience through persistent memory.
+
+### Who it is for
+
+| Audience | How they use it |
+|---|---|
+| **E-commerce stores** | Answer questions about orders, returns, shipping, and payments |
+| **SaaS companies** | Help users with account issues, plan upgrades, and feature questions |
+| **Any subscription business** | Handle billing queries, cancellations, and policy explanations |
+
+### What the agent handles
+
+| User asks about | Agent action |
+|---|---|
+| Return / refund policy | Searches knowledge base → cites the relevant article |
+| Order tracking | Searches KB; escalates if order number is needed |
+| Account tier or plan benefits | Retrieves KB article; recalls saved account facts from memory |
+| Current news or third-party info | Falls back to live web search via Tavily |
+| A fact the user already stated | Reads it from long-term memory — does not ask again |
+
+### Memory behaviour across sessions
+
+```
+Session 1 — user says: "I'm on the premium plan"
+  → Agent saves  account_tier: premium  to user_memory table
+
+Session 2 (next day, new session ID, same user ID)
+  → Agent loads  account_tier: premium  from DB before the first message
+  → System prompt already contains "Known User Facts: account_tier: premium"
+  → Agent greets the user with context intact, no re-introduction needed
+```
+
+---
+
+## Example Dataset
+
+The schema seeds five knowledge base articles automatically. You can extend the
+dataset by inserting additional rows into the `knowledge_base` table.
+
+### Seeded articles (from `database/schema.sql`)
+
+| Title | Category | Key content |
+|---|---|---|
+| Order Tracking and Delivery Status | shipping | How to track orders; standard vs express delivery times; what to do if marked delivered but not received |
+| Return and Refund Policy | returns | 30-day return window; how to initiate a return; refund processing time; premium member free returns |
+| Account Tiers and Benefits | billing | Standard / Plus / Premium plan features and pricing |
+| Password Reset and Account Security | account | Reset steps; 2FA setup; what to do if account is compromised |
+| Payment Methods and Billing Issues | billing | Accepted payment methods; how to fix a failed payment; invoice schedule |
+
+### Adding your own articles
+
+```sql
+INSERT INTO knowledge_base (title, content, category) VALUES
+(
+  'Subscription Cancellation Policy',
+  'To cancel your subscription go to Account Settings > Billing and click
+   Cancel Plan. Your access continues until the end of the current billing
+   period. We do not issue refunds for partial months. To pause instead of
+   cancel, use the Pause Subscription option on the same page.',
+  'billing'
+),
+(
+  'Two-Factor Authentication Setup',
+  'Enable 2FA from Account Settings > Security > Two-Factor Authentication.
+   We support authenticator apps (Google Authenticator, Authy) and SMS.
+   Backup codes are shown once during setup — store them securely.
+   If you lose access, contact support with your account email and a
+   government-issued ID for verification.',
+  'account'
+),
+(
+  'Bulk Order Discounts',
+  'Orders of 10 or more units qualify for a 10% discount applied at checkout.
+   Orders of 50 or more units qualify for 20%. For orders above 200 units
+   contact our sales team at sales@example.com for a custom quote.
+   Bulk discounts cannot be combined with promotional codes.',
+  'pricing'
+);
+```
+
+### Sample user memory rows
+
+The agent writes these automatically during conversation. You can also seed them
+manually to simulate a returning user:
+
+```sql
+INSERT INTO user_memory (user_id, memory_key, memory_value) VALUES
+('alice', 'account_tier',       'premium'),
+('alice', 'preferred_contact',  'email'),
+('alice', 'preferred_language', 'English'),
+('alice', 'recurring_issue',    'delayed shipments'),
+('bob',   'account_tier',       'standard'),
+('bob',   'preferred_name',     'Bobby');
+```
+
+---
+
+## Example Prompts
+
+The following prompts demonstrate the agent's behaviour across different
+scenarios. Run them with `python main.py --user-id alice` after seeding the
+database.
+
+### Scenario 1 — Knowledge base retrieval
+
+```
+You: How do I return a product?
+
+Agent: You can return any unused item in its original packaging within
+       30 days of delivery. To start a return:
+       1. Log into your account and go to "My Orders"
+       2. Select the item and click "Return Item"
+       3. A prepaid shipping label will be emailed within 24 hours
+       Refunds are processed within 5–7 business days after we receive
+       the item. [Return and Refund Policy]
+```
+
+### Scenario 2 — Long-term memory recall
+
+```
+-- Session 1 --
+You: By the way, I prefer to be contacted by email.
+
+Agent: Got it — I've noted that you prefer email contact. I'll make
+       sure that's on file for future sessions.
+
+-- Session 2 (new session, same user ID) --
+You: How do I get support for a billing issue?
+
+Agent: For billing issues you can reach our team directly. Since you
+       prefer email, I'd recommend emailing billing@example.com with
+       your account details and order number.
+```
+
+### Scenario 3 — Follow-up within a session (short-term memory)
+
+```
+You: What plans do you offer?
+
+Agent: We offer three tiers:
+       - Standard: free shipping on orders over $50
+       - Plus ($9.99/mo): free shipping on all orders + priority support
+       - Premium ($19.99/mo): free shipping, free returns, early sale
+         access, and a dedicated account manager
+
+You: What's the price difference between Plus and Premium?
+
+Agent: Plus is $9.99/month and Premium is $19.99/month — a $10/month
+       difference. Premium adds free returns, early sale access, and a
+       dedicated account manager on top of everything in Plus.
+```
+
+### Scenario 4 — Web search fallback
+
+```
+You: What are the latest OpenAI model pricing changes?
+
+Agent: [searching the web...]
+       Based on current web results: OpenAI updated its pricing in ...
+       [Source: openai.com/pricing]
+```
+
+### Scenario 5 — Retry on poor results
+
+```
+You: Tell me about the xyz123 feature
+
+Agent: [searches KB — no results]
+       [retries with broader query — still no results]
+       I wasn't able to find information about "xyz123" in our knowledge
+       base or on the web. This may be an internal feature not yet
+       documented. Would you like me to escalate this to a specialist?
+```
+
+---
+
 ## Architecture
 
 ```
