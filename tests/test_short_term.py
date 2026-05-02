@@ -80,6 +80,28 @@ async def test_get_items_applies_max_history_limit():
     assert 20 in params  # MAX_HISTORY_ITEMS=20 from test env
 
 
+async def test_get_items_sdk_limit_overrides_settings():
+    """When the SDK passes an explicit limit it takes precedence over settings."""
+    cursor = MagicMock()
+    cursor.fetchall.return_value = []
+    ctx = _conn_ctx(cursor)
+
+    session = MySQLSession("s1", "u1")
+    with patch("memory.short_term.get_connection", return_value=ctx):
+        await session.get_items(limit=5)
+
+    _, params = cursor.execute.call_args[0]
+    assert 5 in params
+    assert 20 not in params  # settings default must NOT be used
+
+
+async def test_session_settings_attribute_exists():
+    """session_settings = None is required by the SDK v0.15.1 Session protocol."""
+    session = MySQLSession("s1", "u1")
+    assert hasattr(session, "session_settings")
+    assert session.session_settings is None
+
+
 async def test_get_items_closes_cursor():
     cursor = MagicMock()
     cursor.fetchall.return_value = []

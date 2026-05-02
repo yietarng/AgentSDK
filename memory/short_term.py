@@ -18,16 +18,19 @@ class MySQLSession:
     extracted for human-readable querying but the JSON blob is the source of truth.
     """
 
+    session_settings = None  # required by SDK v0.15.1 Session protocol
+
     def __init__(self, session_id: str, user_id: str) -> None:
         self.session_id = session_id
         self.user_id = user_id
 
-    async def get_items(self) -> list[TResponseInputItem]:
-        """Return the most recent MAX_HISTORY_ITEMS stored items in insertion order.
+    async def get_items(self, limit: int | None = None) -> list[TResponseInputItem]:
+        """Return stored items in insertion order up to the effective limit.
 
-        The SDK calls this with no arguments; the sliding-window limit is read
-        from settings so it is always enforced without relying on the caller.
+        The SDK may pass a limit; when it does not, MAX_HISTORY_ITEMS from
+        settings is used as the sliding-window cap.
         """
+        effective_limit = limit if limit is not None else settings.max_history_items
         # Fetch the last N rows (descending), then re-order ascending so the
         # SDK sees history in chronological order.
         sql = """
@@ -40,7 +43,7 @@ class MySQLSession:
             ) sub
             ORDER BY id ASC
         """
-        params = (self.session_id, settings.max_history_items)
+        params = (self.session_id, effective_limit)
 
         with get_connection() as conn:
             cursor = conn.cursor(dictionary=True)
