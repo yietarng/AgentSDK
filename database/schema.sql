@@ -36,6 +36,24 @@ CREATE TABLE IF NOT EXISTS conversations (
     INDEX idx_conv_user     (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Refund requests submitted by users via the agent
+CREATE TABLE IF NOT EXISTS refund_requests (
+    id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id         VARCHAR(128)  NOT NULL,
+    order_id        VARCHAR(128)  NOT NULL,
+    reason          TEXT          NOT NULL,
+    status          ENUM('pending','approved','rejected','processed')
+                                  NOT NULL DEFAULT 'pending',
+    amount          DECIMAL(10,2) NULL,
+    notes           TEXT          NULL,
+    requested_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                  ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_rf_user_id  (user_id),
+    INDEX idx_rf_order_id (order_id),
+    INDEX idx_rf_status   (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Sample knowledge base articles for testing
 INSERT IGNORE INTO knowledge_base (title, content, category) VALUES
 (
@@ -62,4 +80,9 @@ INSERT IGNORE INTO knowledge_base (title, content, category) VALUES
     'Payment Methods and Billing Issues',
     'We accept Visa, Mastercard, American Express, PayPal, and Apple Pay. All payments are processed securely via Stripe. If your payment fails, check that your billing address matches your card on file, your card has not expired, and you have sufficient funds. For subscription billing issues, go to Account Settings > Billing to update your payment method. Invoices are emailed on the 1st of each month for subscription accounts.',
     'billing'
+),
+(
+    'Refund Eligibility and Processing',
+    'Refunds are available for purchases made within the last 30 days. Items must be unused and in their original packaging. To qualify: (1) Digital downloads and gift cards are non-refundable. (2) Sale items marked "Final Sale" are non-refundable. (3) Damaged or defective items are always eligible regardless of purchase date. Refund amounts: full purchase price is refunded for defective items; a 10% restocking fee applies to change-of-mind returns. Processing time is 5-7 business days after the returned item is received. Premium members receive instant refund approval with no restocking fee. To submit a refund, provide your order ID and the reason. You can also check the status of an existing refund at any time by providing your order ID.',
+    'returns'
 );

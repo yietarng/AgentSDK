@@ -5,7 +5,14 @@ from agent.context import AppContext
 from agent.prompts import render_prompt
 from memory.long_term import recall_memories
 from memory.short_term import MySQLSession
-from tools import web_search, search_knowledge_base, save_user_memory, recall_user_memory
+from tools import (
+    web_search,
+    search_knowledge_base,
+    save_user_memory,
+    recall_user_memory,
+    submit_refund_request,
+    check_refund_status,
+)
 from config import settings
 
 
@@ -26,6 +33,8 @@ support_agent = Agent[AppContext](
         web_search,
         save_user_memory,
         recall_user_memory,
+        submit_refund_request,
+        check_refund_status,
     ],
 )
 
